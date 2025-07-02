@@ -53,9 +53,6 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     const customQuestion = req.body.question || "這個東西多少錢？哪裡可以買到？";
 
     // 萬物價格掃描提示詞
-    用戶問題：${customQuestion}
-
-請根據用戶的問題重點回答，但仍要提供完整的JSON資訊。
     const prompt = `你是萬物價格評估專家，任何東西都能給出價格！
 
 核心原則：
