@@ -24,6 +24,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// 簡單的記憶體儲存（實際應用應使用資料庫）
+const shareStorage = new Map();
+
 // 健康檢查
 app.get('/', (req, res) => {
   res.json({ 
@@ -31,7 +34,10 @@ app.get('/', (req, res) => {
     message: '萬物價格掃描器 API 運行中',
     endpoints: {
       health: '/api/health',
-      analyze: '/api/analyze (POST)'
+      analyze: '/api/analyze (POST)',
+      chat: '/api/chat (POST)',
+      share: '/api/share (POST)',
+      getShare: '/api/share/:id (GET)'
     }
   });
 });
@@ -85,7 +91,6 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
   "price": "NT$ 具體金額或範圍",
   "priceNote": "價格說明（如何計算或為何是這個價格）",
   "description": "詳細描述所有看到的特徵",
-  "origin": "物品的歷史、背景或有趣知識",
   "material": "材質或組成",
   "usage": "用途或功能",
   "category": "分類",
@@ -163,6 +168,188 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     });
   }
 });
+
+// 聊天端點
+app.post('/api/chat', upload.single('image'), async (req, res) => {
+  try {
+    const { message, itemInfo, chatHistory } = req.body;
+    
+    if (!message || !itemInfo) {
+      return res.status(400).json({ 
+        success: false,
+        error: '缺少必要參數' 
+      });
+    }
+
+    // 解析物品資訊和聊天歷史
+    const item = JSON.parse(itemInfo);
+    const history = JSON.parse(chatHistory || '[]');
+    
+    // 構建對話歷史
+    const messages = [
+      {
+        role: "system",
+        content: `你是一個專業的 AI 助手，專門回答關於「${item.name}」的問題。
+        
+        物品資訊：
+        - 名稱：${item.name}
+        - 價格：${item.price}
+        - 描述：${item.description}
+        - 材質：${item.material || '未知'}
+        - 用途：${item.usage || '未知'}
+        - 購買地點：${item.availability}
+        
+        請根據這些資訊回答用戶的問題。保持友善、專業，並盡可能提供有用的建議。
+        如果用戶問到物品資訊以外的問題，請委婉地引導回到這個物品相關的討論。
+        使用繁體中文回應。`
+      }
+    ];
+
+    // 添加歷史對話（只保留最近10輪）
+    const recentHistory = history.slice(-20);
+    recentHistory.forEach(msg => {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        messages.push({
+          role: msg.role,
+          content: msg.content
+        });
+      }
+    });
+
+    // 添加當前用戶訊息
+    messages.push({
+      role: "user",
+      content: message
+    });
+
+    // 如果有圖片，也加入圖片資訊
+    if (req.file) {
+      const base64Image = req.file.buffer.toString('base64');
+      messages[messages.length - 1].content = [
+        { type: "text", text: message },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:image/jpeg;base64,${base64Image}`
+          }
+        }
+      ];
+    }
+
+    // 呼叫 OpenAI API
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: messages,
+      max_tokens: 1000,
+      temperature: 0.7
+    });
+
+    const reply = response.choices[0].message.content;
+
+    res.json({
+      success: true,
+      data: {
+        reply: reply
+      }
+    });
+
+  } catch (error) {
+    console.error('聊天錯誤:', error);
+    res.status(500).json({ 
+      success: false,
+      error: '回覆失敗，請稍後再試'
+    });
+  }
+});
+
+// 創建分享連結
+app.post('/api/share', async (req, res) => {
+  try {
+    const shareData = req.body;
+    
+    if (!shareData || !shareData.name) {
+      return res.status(400).json({ 
+        success: false,
+        error: '缺少分享資料' 
+      });
+    }
+
+    // 生成唯一的分享 ID
+    const shareId = `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // 儲存分享資料（設定過期時間為7天）
+    const expireTime = Date.now() + (7 * 24 * 60 * 60 * 1000);
+    shareStorage.set(shareId, {
+      data: shareData,
+      expireTime: expireTime,
+      createTime: Date.now()
+    });
+
+    // 清理過期的分享
+    cleanExpiredShares();
+
+    res.json({
+      success: true,
+      shareId: shareId
+    });
+
+  } catch (error) {
+    console.error('創建分享錯誤:', error);
+    res.status(500).json({ 
+      success: false,
+      error: '創建分享失敗'
+    });
+  }
+});
+
+// 獲取分享內容
+app.get('/api/share/:id', async (req, res) => {
+  try {
+    const shareId = req.params.id;
+    const shareItem = shareStorage.get(shareId);
+    
+    if (!shareItem) {
+      return res.status(404).json({ 
+        success: false,
+        error: '分享內容不存在或已過期' 
+      });
+    }
+
+    // 檢查是否過期
+    if (Date.now() > shareItem.expireTime) {
+      shareStorage.delete(shareId);
+      return res.status(404).json({ 
+        success: false,
+        error: '分享內容已過期' 
+      });
+    }
+
+    res.json({
+      success: true,
+      data: shareItem.data
+    });
+
+  } catch (error) {
+    console.error('獲取分享錯誤:', error);
+    res.status(500).json({ 
+      success: false,
+      error: '獲取分享失敗'
+    });
+  }
+});
+
+// 清理過期的分享
+function cleanExpiredShares() {
+  const now = Date.now();
+  for (const [key, value] of shareStorage.entries()) {
+    if (now > value.expireTime) {
+      shareStorage.delete(key);
+    }
+  }
+}
+
+// 定期清理（每小時執行一次）
+setInterval(cleanExpiredShares, 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
