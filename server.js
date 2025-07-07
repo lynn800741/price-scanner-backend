@@ -172,7 +172,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 // 聊天端點
 app.post('/api/chat', upload.single('image'), async (req, res) => {
   try {
-    const { message, itemInfo, chatHistory } = req.body;
+    const { message, itemInfo, chatHistory, includeImage } = req.body;
     
     if (!message || !itemInfo) {
       return res.status(400).json({ 
@@ -184,6 +184,7 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
     // 解析物品資訊和聊天歷史
     const item = JSON.parse(itemInfo);
     const history = JSON.parse(chatHistory || '[]');
+    const shouldIncludeImage = includeImage === 'true';
     
     // 構建對話歷史
     const messages = [
@@ -191,13 +192,25 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
         role: "system",
         content: `你是一個專業的 AI 助手，專門回答關於「${item.name}」的問題。
         
-        物品資訊：
+        物品詳細資訊：
         - 名稱：${item.name}
         - 價格：${item.price}
+        - 價格說明：${item.priceNote || ''}
         - 描述：${item.description}
         - 材質：${item.material || '未知'}
         - 用途：${item.usage || '未知'}
+        - 類別：${item.category || '未知'}
+        - 品牌：${item.brand || '未知'}
+        - 尺寸：${item.size || '未知'}
+        - 重量：${item.weight || '未知'}
         - 購買地點：${item.availability}
+        - 流行度評分：${item.popularityScore || '未知'}
+        - 環保評分：${item.ecoScore || '未知'}
+        - 耐用度：${item.durability || '未知'}
+        - 保養方式：${item.maintenance || '未知'}
+        
+        購買建議：${item.tips ? item.tips.join('、') : '無'}
+        相關物品：${item.relatedItems ? item.relatedItems.map(i => i.name).join('、') : '無'}
         
         請根據這些資訊回答用戶的問題。保持友善、專業，並盡可能提供有用的建議。
         如果用戶問到物品資訊以外的問題，請委婉地引導回到這個物品相關的討論。
@@ -217,23 +230,28 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
     });
 
     // 添加當前用戶訊息
-    messages.push({
-      role: "user",
-      content: message
-    });
-
-    // 如果有圖片，也加入圖片資訊
-    if (req.file) {
+    if (shouldIncludeImage && req.file) {
+      // 包含圖片的訊息
       const base64Image = req.file.buffer.toString('base64');
-      messages[messages.length - 1].content = [
-        { type: "text", text: message },
-        {
-          type: "image_url",
-          image_url: {
-            url: `data:image/jpeg;base64,${base64Image}`
+      messages.push({
+        role: "user",
+        content: [
+          { type: "text", text: message },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/jpeg;base64,${base64Image}`,
+              detail: "high"
+            }
           }
-        }
-      ];
+        ]
+      });
+    } else {
+      // 純文字訊息
+      messages.push({
+        role: "user",
+        content: message
+      });
     }
 
     // 呼叫 OpenAI API
@@ -350,6 +368,46 @@ function cleanExpiredShares() {
 
 // 定期清理（每小時執行一次）
 setInterval(cleanExpiredShares, 60 * 60 * 1000);
+
+// Excel 匯出端點
+app.post('/api/export/excel', async (req, res) => {
+  try {
+    const { data } = req.body;
+    
+    if (!data || !Array.isArray(data)) {
+      return res.status(400).json({ 
+        success: false,
+        error: '缺少匯出資料' 
+      });
+    }
+
+    // 這裡應該使用專門的 Excel 套件如 exceljs 或 xlsx
+    // 由於示範，這裡簡單地返回 CSV 格式
+    const headers = Object.keys(data[0] || {});
+    const rows = data.map(item => headers.map(header => item[header] || ''));
+    
+    // 建立 CSV 內容
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    // 加入 BOM 以支援中文
+    const BOM = '\uFEFF';
+    const buffer = Buffer.from(BOM + csvContent, 'utf-8');
+    
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="price_scanner_export.csv"');
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('匯出錯誤:', error);
+    res.status(500).json({ 
+      success: false,
+      error: '匯出失敗'
+    });
+  }
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
