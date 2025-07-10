@@ -149,7 +149,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
         }
       ],
       max_tokens: 2000,  // 增加到2000以容納更詳細的分析
-      temperature: 0.7,
+      temperature: 0.5,
       response_format: { type: "json_object" }
     });
 
