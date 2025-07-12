@@ -24,6 +24,31 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// 語言對應函數
+function getResponseLanguage(langCode) {
+  const languageMap = {
+    'zh-TW': '繁體中文',
+    'zh-CN': '簡體中文',
+    'en': 'English',
+    'ja': '日本語',
+    'ko': '한국어',
+    'th': 'ภาษาไทย',
+    'vi': 'Tiếng Việt',
+    'es': 'Español',
+    'fr': 'Français',
+    'de': 'Deutsch',
+    'it': 'Italiano',
+    'pt': 'Português',
+    'ar': 'العربية',
+    'tr': 'Türkçe',
+    'ru': 'Русский',
+    'id': 'Bahasa Indonesia',
+    'fil': 'Filipino'
+  };
+  
+  return languageMap[langCode] || languageMap['zh-TW'];
+}
+
 // 簡單的記憶體儲存（實際應用應使用資料庫）
 const shareStorage = new Map();
 
@@ -57,6 +82,10 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 
     // 獲取自定義問題
     const customQuestion = req.body.question || "這個東西多少錢？哪裡可以買到？";
+    
+    // 獲取語言參數
+    const language = req.body.language || 'zh-TW';
+    const responseLanguage = getResponseLanguage(language);
 
     // 萬物價格掃描提示詞
     const prompt = `你是萬物價格評估專家，任何東西都能給出價格！
@@ -129,7 +158,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 }
 
 記住：要像偵探一樣分析每個細節，給出最準確的識別結果！
-使用繁體中文回應。`;
+使用${responseLanguage}回應。`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -149,7 +178,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
         }
       ],
       max_tokens: 2000,  // 增加到2000以容納更詳細的分析
-      temperature: 0.5,
+      temperature: 0.5,  // 降低至0.5提升識別穩定性
       response_format: { type: "json_object" }
     });
 
@@ -172,7 +201,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 // 聊天端點（修正版本）
 app.post('/api/chat', upload.single('image'), async (req, res) => {
   try {
-    const { message, itemInfo, chatHistory, includeImage } = req.body;
+    const { message, itemInfo, chatHistory, includeImage, language } = req.body;
     
     if (!message || !itemInfo) {
       return res.status(400).json({ 
@@ -185,6 +214,7 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
     const item = JSON.parse(itemInfo);
     const history = JSON.parse(chatHistory || '[]');
     const shouldIncludeImage = includeImage === 'true';
+    const responseLanguage = getResponseLanguage(language || 'zh-TW');
     
     // 構建對話歷史
     const messages = [
@@ -219,7 +249,7 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
         2. 不要說"我無法識別"或"我看不到圖片"，因為你已經有完整的分析結果
         3. 回答要具體、實用、友善
         4. 如果用戶問到你沒有的資訊，可以基於常識推測並說明是推測
-        5. 使用繁體中文回應`
+        5. 使用${responseLanguage}回應`
       }
     ];
 
