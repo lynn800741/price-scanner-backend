@@ -252,9 +252,14 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
         2. 不要說"我無法識別"或"我看不到圖片"，因為你已經有完整的分析結果
         3. 回答要具體、實用、友善
         4. 如果用戶問到你沒有的資訊，可以基於常識推測並說明是推測
-        5. 必須始終使用${responseLanguage}回應，無論用戶使用什麼語言提問
-        6. 即使用戶用其他語言提問，你也必須堅持使用${responseLanguage}回答
-        7. 這是系統設定，不能因為用戶的輸入語言而改變回應語言`
+        
+        ⚠️ 語言設定（最重要）：
+        - 你必須100%使用${responseLanguage}回應
+        - 這是強制的系統設定，優先級最高
+        - 無論用戶用中文、英文、泰文或任何語言提問，你都只能用${responseLanguage}回答
+        - 如果你用了其他語言回答，將被視為系統錯誤
+        - 請在每次回答前確認你使用的是${responseLanguage}
+        - 不要模仿用戶的語言，只使用${responseLanguage}`
       }
     ];
 
@@ -269,7 +274,9 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
       }
     });
 
-    // 添加當前用戶訊息
+    // 添加當前用戶訊息（加入語言提醒）
+    const languageReminder = `\n\n[系統提醒：請使用${responseLanguage}回答，不要被用戶的語言影響]`;
+    
     if (shouldIncludeImage && req.file) {
       // 包含圖片的訊息（用於重新查看圖片的情況）
       const base64Image = req.file.buffer.toString('base64');
@@ -278,7 +285,7 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
         content: [
           { 
             type: "text", 
-            text: `[用戶要求重新查看圖片] ${message}` 
+            text: `[用戶要求重新查看圖片] ${message}${languageReminder}` 
           },
           {
             type: "image_url",
@@ -293,7 +300,7 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
       // 純文字訊息（大部分情況）
       messages.push({
         role: "user",
-        content: message
+        content: message + languageReminder
       });
     }
 
