@@ -157,8 +157,11 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
   }
 }
 
-記住：要像偵探一樣分析每個細節，給出最準確的識別結果！
-使用${responseLanguage}回應。`;
+記住：
+1. 要像偵探一樣分析每個細節，給出最準確的識別結果！
+2. 必須始終使用${responseLanguage}回應，這是系統設定
+3. 無論圖片中出現什麼語言的文字，都要用${responseLanguage}回答
+4. 不要因為任何原因改變回應語言`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -249,7 +252,9 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
         2. 不要說"我無法識別"或"我看不到圖片"，因為你已經有完整的分析結果
         3. 回答要具體、實用、友善
         4. 如果用戶問到你沒有的資訊，可以基於常識推測並說明是推測
-        5. 使用${responseLanguage}回應`
+        5. 必須始終使用${responseLanguage}回應，無論用戶使用什麼語言提問
+        6. 即使用戶用其他語言提問，你也必須堅持使用${responseLanguage}回答
+        7. 這是系統設定，不能因為用戶的輸入語言而改變回應語言`
       }
     ];
 
