@@ -119,7 +119,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
   "name": "具體名稱（如：野獸國 D-Stage 死侍雕像、太陽、台北101大樓）",
   "price": "NT$ 具體金額或範圍",
   "priceNote": "價格說明（如何計算或為何是這個價格）",
-  "description": "詳細描述所有看到的特徵",
+  "description": "詳細描述所有看到的特徵，包含：主要顏色和配色方案、文字內容（品牌標誌、標籤、說明文字）、材質質感（光滑/粗糙/金屬感等）、形狀和設計特點、按鈕或控制元件的位置、任何圖案或裝飾、使用狀態（全新/使用痕跡/磨損程度）、尺寸比例關係、特殊特徵或細節",
   "material": "材質或組成",
   "usage": "用途或功能",
   "category": "分類",
@@ -216,8 +216,38 @@ app.post('/api/chat', upload.single('image'), async (req, res) => {
     // 解析物品資訊和聊天歷史
     const item = JSON.parse(itemInfo);
     const history = JSON.parse(chatHistory || '[]');
-    const shouldIncludeImage = includeImage === 'true';
+    let shouldIncludeImage = includeImage === 'true';
     const responseLanguage = getResponseLanguage(language || 'zh-TW');
+    
+    // 智能判斷是否需要圖片
+    const visualKeywords = {
+      'zh-TW': ['顏色', '色', '看起來', '外觀', '外表', '樣子', '長什麼樣', '形狀', '造型', '設計', '款式', '材質', '質感', '表面', '寫什麼', '寫著', '標示', '標籤', '文字', '型號', 'logo', '標誌', '商標', '在哪', '位置', '哪個位置', '上面', '下面', '左邊', '右邊', '按鈕', '開關', '接口', '圖案', '花紋', '紋路', '特徵', '細節', '破損', '磨損', '刮痕', '損壞', '髒污', '污漬', '痕跡', '新舊', '成色', '品相', '狀態', '是不是', '是否', '對不對', '像不像', '真假', '正品', '仿冒', '這個', '那個', '看看', '查看', '檢查', '仔細看', '照片', '圖片', '影像'],
+      'zh-CN': ['颜色', '色', '看起来', '外观', '外表', '样子', '长什么样', '形状', '造型', '设计', '款式', '材质', '质感', '表面', '写什么', '写着', '标示', '标签', '文字', '型号', 'logo', '标志', '商标', '在哪', '位置', '哪个位置', '上面', '下面', '左边', '右边', '按钮', '开关', '接口', '图案', '花纹', '纹路', '特征', '细节', '破损', '磨损', '刮痕', '损坏', '脏污', '污渍', '痕迹', '新旧', '成色', '品相', '状态', '是不是', '是否', '对不对', '像不像', '真假', '正品', '仿冒', '这个', '那个', '看看', '查看', '检查', '仔细看', '照片', '图片', '影像'],
+      'en': ['color', 'colour', 'look', 'looks', 'appearance', 'design', 'shape', 'style', 'material', 'texture', 'surface', 'what is', 'written', 'label', 'text', 'model', 'logo', 'brand mark', 'where', 'location', 'position', 'above', 'below', 'left', 'right', 'button', 'switch', 'port', 'pattern', 'detail', 'damage', 'scratch', 'worn', 'stain', 'condition', 'is it', 'is this', 'does it', 'genuine', 'fake', 'authentic', 'this', 'that', 'show', 'check', 'see', 'picture', 'photo', 'image'],
+      'ja': ['色', 'いろ', 'カラー', '見た目', '外観', 'デザイン', '形', '材質', '質感', '書いて', 'ラベル', '文字', '型番', 'ロゴ', 'どこ', '位置', '上', '下', '左', '右', 'ボタン', 'スイッチ', '模様', '柄', '詳細', '傷', '汚れ', '状態', 'これ', 'それ', '見て', '確認', '写真', '画像'],
+      'ko': ['색', '색깔', '색상', '모양', '외관', '디자인', '모습', '재질', '질감', '뭐라고', '라벨', '글자', '모델', '로고', '어디', '위치', '위', '아래', '왼쪽', '오른쪽', '버튼', '스위치', '무늬', '패턴', '세부', '흠집', '손상', '상태', '이거', '저거', '봐', '확인', '사진', '이미지'],
+      'th': ['สี', 'ดู', 'ลักษณะ', 'หน้าตา', 'รูปร่าง', 'ดีไซน์', 'วัสดุ', 'เขียนว่า', 'ป้าย', 'ตัวอักษร', 'รุ่น', 'โลโก้', 'ที่ไหน', 'ตำแหน่ง', 'บน', 'ล่าง', 'ซ้าย', 'ขวา', 'ปุ่ม', 'สวิตช์', 'ลาย', 'รายละเอียด', 'รอย', 'สภาพ', 'นี่', 'นั่น', 'ดูหน่อย', 'เช็ค', 'รูป', 'ภาพ'],
+      'vi': ['màu', 'màu sắc', 'nhìn', 'hình dáng', 'thiết kế', 'kiểu dáng', 'chất liệu', 'ghi', 'nhãn', 'chữ', 'model', 'logo', 'ở đâu', 'vị trí', 'trên', 'dưới', 'trái', 'phải', 'nút', 'công tắc', 'họa tiết', 'chi tiết', 'vết', 'tình trạng', 'cái này', 'cái kia', 'xem', 'kiểm tra', 'hình', 'ảnh'],
+      'es': ['color', 'ver', 'aspecto', 'apariencia', 'forma', 'diseño', 'material', 'escrito', 'etiqueta', 'texto', 'modelo', 'logo', 'dónde', 'ubicación', 'arriba', 'abajo', 'izquierda', 'derecha', 'botón', 'interruptor', 'patrón', 'detalle', 'daño', 'estado', 'esto', 'eso', 'muestra', 'revisar', 'foto', 'imagen'],
+      'fr': ['couleur', 'voir', 'aspect', 'apparence', 'forme', 'design', 'matériau', 'écrit', 'étiquette', 'texte', 'modèle', 'logo', 'où', 'position', 'haut', 'bas', 'gauche', 'droite', 'bouton', 'interrupteur', 'motif', 'détail', 'dommage', 'état', 'ceci', 'cela', 'montrer', 'vérifier', 'photo', 'image'],
+      'de': ['Farbe', 'aussehen', 'Aussehen', 'Form', 'Design', 'Material', 'geschrieben', 'Etikett', 'Text', 'Modell', 'Logo', 'wo', 'Position', 'oben', 'unten', 'links', 'rechts', 'Taste', 'Schalter', 'Muster', 'Detail', 'Schaden', 'Zustand', 'dies', 'das', 'zeigen', 'prüfen', 'Foto', 'Bild'],
+      'it': ['colore', 'vedere', 'aspetto', 'forma', 'design', 'materiale', 'scritto', 'etichetta', 'testo', 'modello', 'logo', 'dove', 'posizione', 'sopra', 'sotto', 'sinistra', 'destra', 'pulsante', 'interruttore', 'motivo', 'dettaglio', 'danno', 'condizione', 'questo', 'quello', 'mostra', 'controlla', 'foto', 'immagine'],
+      'pt': ['cor', 'ver', 'aspecto', 'aparência', 'forma', 'design', 'material', 'escrito', 'etiqueta', 'texto', 'modelo', 'logo', 'onde', 'posição', 'cima', 'baixo', 'esquerda', 'direita', 'botão', 'interruptor', 'padrão', 'detalhe', 'dano', 'estado', 'isto', 'isso', 'mostrar', 'verificar', 'foto', 'imagem'],
+      'ar': ['لون', 'شكل', 'مظهر', 'تصميم', 'مادة', 'مكتوب', 'ملصق', 'نص', 'موديل', 'شعار', 'أين', 'موقع', 'فوق', 'تحت', 'يسار', 'يمين', 'زر', 'مفتاح', 'نمط', 'تفصيل', 'ضرر', 'حالة', 'هذا', 'ذلك', 'أرني', 'تحقق', 'صورة', 'صورة'],
+      'tr': ['renk', 'görünüm', 'şekil', 'tasarım', 'malzeme', 'yazılı', 'etiket', 'metin', 'model', 'logo', 'nerede', 'konum', 'üst', 'alt', 'sol', 'sağ', 'düğme', 'anahtar', 'desen', 'detay', 'hasar', 'durum', 'bu', 'şu', 'göster', 'kontrol', 'fotoğraf', 'resim'],
+      'ru': ['цвет', 'выглядит', 'внешний вид', 'форма', 'дизайн', 'материал', 'написано', 'этикетка', 'текст', 'модель', 'логотип', 'где', 'позиция', 'сверху', 'снизу', 'слева', 'справа', 'кнопка', 'переключатель', 'узор', 'деталь', 'повреждение', 'состояние', 'это', 'то', 'покажи', 'проверь', 'фото', 'изображение'],
+      'id': ['warna', 'lihat', 'tampilan', 'bentuk', 'desain', 'bahan', 'tertulis', 'label', 'teks', 'model', 'logo', 'dimana', 'posisi', 'atas', 'bawah', 'kiri', 'kanan', 'tombol', 'saklar', 'pola', 'detail', 'kerusakan', 'kondisi', 'ini', 'itu', 'tunjukkan', 'periksa', 'foto', 'gambar'],
+      'fil': ['kulay', 'tignan', 'itsura', 'hugis', 'disenyo', 'materyal', 'nakasulat', 'label', 'teksto', 'modelo', 'logo', 'saan', 'posisyon', 'taas', 'baba', 'kaliwa', 'kanan', 'button', 'switch', 'pattern', 'detalye', 'sira', 'kondisyon', 'ito', 'iyan', 'ipakita', 'tingnan', 'larawan', 'litrato']
+    };
+    
+    // 檢查訊息是否包含視覺相關關鍵詞
+    if (!shouldIncludeImage) {
+      const keywords = visualKeywords[language] || visualKeywords['en'];
+      const messageLower = message.toLowerCase();
+      shouldIncludeImage = keywords.some(keyword => 
+        messageLower.includes(keyword.toLowerCase())
+      );
+    }
     
     // 構建對話歷史
     const messages = [
