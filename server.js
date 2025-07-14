@@ -111,6 +111,14 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     const language = req.body.language || 'zh-TW';
     const currency = req.body.currency || 'TWD';
     const responseLanguage = getResponseLanguage(language);
+    
+    // Debug: 記錄收到的參數
+    console.log('分析請求參數:', {
+      language: language,
+      currency: currency,
+      responseLanguage: responseLanguage,
+      hasFile: !!req.file
+    });
 
     // 萬物價格掃描提示詞
     const prompt = `你是萬物價格評估專家，任何東西都能給出價格！
@@ -188,7 +196,9 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 3. 無論圖片中出現什麼語言的文字，都要用${responseLanguage}回答
 4. 不要因為任何原因改變回應語言
 5. 價格必須使用 ${getCurrencySymbol(currency)} 作為貨幣符號
-6. 價格金額要符合該幣別的常見數值（如日圓通常是整數，美元有小數點等）`;
+6. 價格金額要符合該幣別的常見數值（如日圓通常是整數，美元有小數點等）
+
+⚠️ 重要：你必須100%使用${responseLanguage}回應。如果你用中文回應而使用者要求的是其他語言，將被視為錯誤。請再次確認：你的整個回應必須是${responseLanguage}。`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
