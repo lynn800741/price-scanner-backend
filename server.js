@@ -486,7 +486,77 @@ function cleanExpiredShares() {
 // 定期清理（每小時執行一次）
 setInterval(cleanExpiredShares, 60 * 60 * 1000);
 
-// 匯率轉換端點
+// 批量匯率轉換端點
+app.post('/api/exchange-rates', async (req, res) => {
+  try {
+    const { pairs } = req.body; // 預期格式: [{from: 'USD', to: 'TWD'}, ...]
+    
+    if (!pairs || !Array.isArray(pairs)) {
+      return res.status(400).json({ error: '請提供匯率對陣列' });
+    }
+    
+    const results = {};
+    const apiKey = process.env.EXCHANGE_RATE_API_KEY;
+    
+    for (const pair of pairs) {
+      const { from, to } = pair;
+      const cacheKey = `${from}_${to}`;
+      
+      // 檢查快取
+      const cached = exchangeRateCache.get(cacheKey);
+      if (cached && cached.timestamp > Date.now() - 24 * 60 * 60 * 1000) {
+        results[cacheKey] = cached.rate;
+        continue;
+      }
+      
+      // 如果沒有 API Key，使用備用匯率
+      if (!apiKey) {
+        results[cacheKey] = getFallbackRate(from, to);
+        continue;
+      }
+      
+      try {
+        // 獲取匯率
+        const response = await fetch(
+          `https://v6.exchangerate-api.com/v6/${apiKey}/pair/${from}/${to}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.result === 'success' && data.conversion_rate) {
+            results[cacheKey] = data.conversion_rate;
+            // 更新快取
+            exchangeRateCache.set(cacheKey, {
+              rate: data.conversion_rate,
+              timestamp: Date.now()
+            });
+          } else {
+            results[cacheKey] = getFallbackRate(from, to);
+          }
+        } else {
+          results[cacheKey] = getFallbackRate(from, to);
+        }
+      } catch (error) {
+        console.error(`匯率獲取失敗 ${from}->${to}:`, error);
+        results[cacheKey] = getFallbackRate(from, to);
+      }
+    }
+    
+    res.json({
+      success: true,
+      rates: results
+    });
+    
+  } catch (error) {
+    console.error('批量匯率轉換錯誤:', error);
+    res.status(500).json({ 
+      success: false,
+      error: '匯率轉換失敗'
+    });
+  }
+});
+
+// 單一匯率轉換端點（保留相容性）
 app.get('/api/exchange-rate/:from/:to', async (req, res) => {
   try {
     const { from, to } = req.params;
