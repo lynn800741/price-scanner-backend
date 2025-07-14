@@ -49,6 +49,30 @@ function getResponseLanguage(langCode) {
   return languageMap[langCode] || languageMap['zh-TW'];
 }
 
+// 獲取幣別符號
+function getCurrencySymbol(currency) {
+  const symbols = {
+    'TWD': 'NT$',
+    'USD': '$',
+    'CNY': '¥',
+    'EUR': '€',
+    'JPY': '¥',
+    'KRW': '₩',
+    'HKD': 'HK$',
+    'SGD': 'S$',
+    'THB': '฿',
+    'VND': '₫',
+    'MYR': 'RM',
+    'PHP': '₱',
+    'IDR': 'Rp',
+    'GBP': '£',
+    'CAD': 'C$',
+    'AUD': 'A$',
+    'CHF': 'CHF'
+  };
+  return symbols[currency] || currency + ' ';
+}
+
 // 簡單的記憶體儲存（實際應用應使用資料庫）
 const shareStorage = new Map();
 
@@ -83,8 +107,9 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     // 獲取自定義問題
     const customQuestion = req.body.question || "這個東西多少錢？哪裡可以買到？";
     
-    // 獲取語言參數
+    // 獲取語言和幣別參數
     const language = req.body.language || 'zh-TW';
+    const currency = req.body.currency || 'TWD';
     const responseLanguage = getResponseLanguage(language);
 
     // 萬物價格掃描提示詞
@@ -117,7 +142,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 回應必須是JSON格式：
 {
   "name": "具體名稱（如：野獸國 D-Stage 死侍雕像、太陽、台北101大樓）",
-  "price": "NT$ 具體金額或範圍",
+  "price": "${getCurrencySymbol(currency)} 具體金額或範圍",
   "priceNote": "價格說明（如何計算或為何是這個價格）",
   "description": "詳細描述所有看到的特徵，包含：主要顏色和配色方案、文字內容（品牌標誌、標籤、說明文字）、材質質感（光滑/粗糙/金屬感等）、形狀和設計特點、按鈕或控制元件的位置、任何圖案或裝飾、使用狀態（全新/使用痕跡/磨損程度）、尺寸比例關係、特殊特徵或細節",
   "material": "材質或組成",
@@ -161,7 +186,9 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 1. 要像偵探一樣分析每個細節，給出最準確的識別結果！
 2. 必須始終使用${responseLanguage}回應，這是系統設定
 3. 無論圖片中出現什麼語言的文字，都要用${responseLanguage}回答
-4. 不要因為任何原因改變回應語言`;
+4. 不要因為任何原因改變回應語言
+5. 價格必須使用 ${getCurrencySymbol(currency)} 作為貨幣符號
+6. 價格金額要符合該幣別的常見數值（如日圓通常是整數，美元有小數點等）`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -204,7 +231,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
 // 聊天端點（修正版本）
 app.post('/api/chat', upload.single('image'), async (req, res) => {
   try {
-    const { message, itemInfo, chatHistory, includeImage, language } = req.body;
+    const { message, itemInfo, chatHistory, includeImage, language, currency } = req.body;
     
     if (!message || !itemInfo) {
       return res.status(400).json({ 
