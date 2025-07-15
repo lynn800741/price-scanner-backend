@@ -73,6 +73,199 @@ function getCurrencySymbol(currency) {
   return symbols[currency] || currency + ' ';
 }
 
+// 根據國家代碼獲取購物平台
+function getShoppingPlatforms(countryCode) {
+  const platforms = {
+    // 台灣
+    'TW': [
+      { platform: '蝦皮購物', searchTerm: '{keyword}' },
+      { platform: 'PChome 24h', searchTerm: '{keyword}' },
+      { platform: 'momo購物網', searchTerm: '{keyword}' },
+      { platform: '露天拍賣', searchTerm: '{keyword}' },
+      { platform: 'Yahoo拍賣', searchTerm: '{keyword}' }
+    ],
+    // 美國
+    'US': [
+      { platform: 'Amazon', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'Walmart', searchTerm: '{keyword}' },
+      { platform: 'Target', searchTerm: '{keyword}' },
+      { platform: 'Best Buy', searchTerm: '{keyword}' }
+    ],
+    // 中國
+    'CN': [
+      { platform: '淘寶', searchTerm: '{keyword}' },
+      { platform: '京東', searchTerm: '{keyword}' },
+      { platform: '拼多多', searchTerm: '{keyword}' },
+      { platform: '天貓', searchTerm: '{keyword}' },
+      { platform: '蘇寧易購', searchTerm: '{keyword}' }
+    ],
+    // 日本
+    'JP': [
+      { platform: 'Amazon.co.jp', searchTerm: '{keyword}' },
+      { platform: '楽天市場', searchTerm: '{keyword}' },
+      { platform: 'Yahoo!ショッピング', searchTerm: '{keyword}' },
+      { platform: 'メルカリ', searchTerm: '{keyword}' },
+      { platform: 'ヨドバシカメラ', searchTerm: '{keyword}' }
+    ],
+    // 韓國
+    'KR': [
+      { platform: 'Coupang', searchTerm: '{keyword}' },
+      { platform: 'Gmarket', searchTerm: '{keyword}' },
+      { platform: '11번가', searchTerm: '{keyword}' },
+      { platform: 'Naver Shopping', searchTerm: '{keyword}' },
+      { platform: 'Auction', searchTerm: '{keyword}' }
+    ],
+    // 泰國
+    'TH': [
+      { platform: 'Shopee', searchTerm: '{keyword}' },
+      { platform: 'Lazada', searchTerm: '{keyword}' },
+      { platform: 'JD Central', searchTerm: '{keyword}' },
+      { platform: 'Central Online', searchTerm: '{keyword}' },
+      { platform: 'Tops Online', searchTerm: '{keyword}' }
+    ],
+    // 越南
+    'VN': [
+      { platform: 'Shopee', searchTerm: '{keyword}' },
+      { platform: 'Lazada', searchTerm: '{keyword}' },
+      { platform: 'Tiki', searchTerm: '{keyword}' },
+      { platform: 'Sendo', searchTerm: '{keyword}' },
+      { platform: 'FPT Shop', searchTerm: '{keyword}' }
+    ],
+    // 新加坡
+    'SG': [
+      { platform: 'Shopee', searchTerm: '{keyword}' },
+      { platform: 'Lazada', searchTerm: '{keyword}' },
+      { platform: 'Amazon.sg', searchTerm: '{keyword}' },
+      { platform: 'Qoo10', searchTerm: '{keyword}' },
+      { platform: 'Carousell', searchTerm: '{keyword}' }
+    ],
+    // 馬來西亞
+    'MY': [
+      { platform: 'Shopee', searchTerm: '{keyword}' },
+      { platform: 'Lazada', searchTerm: '{keyword}' },
+      { platform: 'PGMall', searchTerm: '{keyword}' },
+      { platform: 'Mudah.my', searchTerm: '{keyword}' },
+      { platform: 'Lelong', searchTerm: '{keyword}' }
+    ],
+    // 印尼
+    'ID': [
+      { platform: 'Shopee', searchTerm: '{keyword}' },
+      { platform: 'Tokopedia', searchTerm: '{keyword}' },
+      { platform: 'Bukalapak', searchTerm: '{keyword}' },
+      { platform: 'Lazada', searchTerm: '{keyword}' },
+      { platform: 'Blibli', searchTerm: '{keyword}' }
+    ],
+    // 菲律賓
+    'PH': [
+      { platform: 'Shopee', searchTerm: '{keyword}' },
+      { platform: 'Lazada', searchTerm: '{keyword}' },
+      { platform: 'Zalora', searchTerm: '{keyword}' },
+      { platform: 'Carousell', searchTerm: '{keyword}' },
+      { platform: 'Facebook Marketplace', searchTerm: '{keyword}' }
+    ],
+    // 英國
+    'GB': [
+      { platform: 'Amazon.co.uk', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'Argos', searchTerm: '{keyword}' },
+      { platform: 'ASOS', searchTerm: '{keyword}' },
+      { platform: 'Tesco', searchTerm: '{keyword}' }
+    ],
+    // 德國
+    'DE': [
+      { platform: 'Amazon.de', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'Otto', searchTerm: '{keyword}' },
+      { platform: 'Zalando', searchTerm: '{keyword}' },
+      { platform: 'MediaMarkt', searchTerm: '{keyword}' }
+    ],
+    // 法國
+    'FR': [
+      { platform: 'Amazon.fr', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'Cdiscount', searchTerm: '{keyword}' },
+      { platform: 'Fnac', searchTerm: '{keyword}' },
+      { platform: 'La Redoute', searchTerm: '{keyword}' }
+    ],
+    // 義大利
+    'IT': [
+      { platform: 'Amazon.it', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'Subito', searchTerm: '{keyword}' },
+      { platform: 'ePrice', searchTerm: '{keyword}' },
+      { platform: 'Zalando', searchTerm: '{keyword}' }
+    ],
+    // 西班牙
+    'ES': [
+      { platform: 'Amazon.es', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'El Corte Inglés', searchTerm: '{keyword}' },
+      { platform: 'Wallapop', searchTerm: '{keyword}' },
+      { platform: 'AliExpress', searchTerm: '{keyword}' }
+    ],
+    // 巴西
+    'BR': [
+      { platform: 'Mercado Livre', searchTerm: '{keyword}' },
+      { platform: 'Amazon.com.br', searchTerm: '{keyword}' },
+      { platform: 'Americanas', searchTerm: '{keyword}' },
+      { platform: 'Magazine Luiza', searchTerm: '{keyword}' },
+      { platform: 'OLX', searchTerm: '{keyword}' }
+    ],
+    // 加拿大
+    'CA': [
+      { platform: 'Amazon.ca', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'Walmart Canada', searchTerm: '{keyword}' },
+      { platform: 'Canadian Tire', searchTerm: '{keyword}' },
+      { platform: 'Best Buy Canada', searchTerm: '{keyword}' }
+    ],
+    // 澳洲
+    'AU': [
+      { platform: 'Amazon.com.au', searchTerm: '{keyword}' },
+      { platform: 'eBay', searchTerm: '{keyword}' },
+      { platform: 'Gumtree', searchTerm: '{keyword}' },
+      { platform: 'JB Hi-Fi', searchTerm: '{keyword}' },
+      { platform: 'Kogan', searchTerm: '{keyword}' }
+    ],
+    // 俄羅斯
+    'RU': [
+      { platform: 'Ozon', searchTerm: '{keyword}' },
+      { platform: 'Wildberries', searchTerm: '{keyword}' },
+      { platform: 'AliExpress Russia', searchTerm: '{keyword}' },
+      { platform: 'Avito', searchTerm: '{keyword}' },
+      { platform: 'Яндекс.Маркет', searchTerm: '{keyword}' }
+    ],
+    // 土耳其
+    'TR': [
+      { platform: 'Trendyol', searchTerm: '{keyword}' },
+      { platform: 'Hepsiburada', searchTerm: '{keyword}' },
+      { platform: 'n11', searchTerm: '{keyword}' },
+      { platform: 'GittiGidiyor', searchTerm: '{keyword}' },
+      { platform: 'Amazon.com.tr', searchTerm: '{keyword}' }
+    ],
+    // 沙烏地阿拉伯
+    'SA': [
+      { platform: 'Amazon.sa', searchTerm: '{keyword}' },
+      { platform: 'noon', searchTerm: '{keyword}' },
+      { platform: 'Jarir', searchTerm: '{keyword}' },
+      { platform: 'extra', searchTerm: '{keyword}' },
+      { platform: 'Souq', searchTerm: '{keyword}' }
+    ],
+    // 香港
+    'HK': [
+      { platform: 'HKTVmall', searchTerm: '{keyword}' },
+      { platform: 'PriceHK', searchTerm: '{keyword}' },
+      { platform: '友和YOHO', searchTerm: '{keyword}' },
+      { platform: '豐澤', searchTerm: '{keyword}' },
+      { platform: 'Carousell', searchTerm: '{keyword}' }
+    ]
+  };
+  
+  // 如果找不到對應國家，返回美國平台作為預設
+  return platforms[countryCode] || platforms['US'];
+}
+
 // 簡單的記憶體儲存（實際應用應使用資料庫）
 const shareStorage = new Map();
 
@@ -107,16 +300,22 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
     // 獲取自定義問題
     const customQuestion = req.body.question || "這個東西多少錢？哪裡可以買到？";
     
-    // 獲取語言和幣別參數
+    // 獲取語言、幣別和國家代碼參數
     const language = req.body.language || 'zh-TW';
     const currency = req.body.currency || 'TWD';
+    const countryCode = req.body.countryCode || 'TW';
     const responseLanguage = getResponseLanguage(language);
+    
+    // 根據國家代碼獲取購物平台
+    const shoppingPlatforms = getShoppingPlatforms(countryCode);
     
     // Debug: 記錄收到的參數
     console.log('分析請求參數:', {
       language: language,
       currency: currency,
+      countryCode: countryCode,
       responseLanguage: responseLanguage,
+      platformsCount: shoppingPlatforms.length,
       hasFile: !!req.file
     });
 
@@ -177,11 +376,7 @@ app.post('/api/analyze', upload.single('image'), async (req, res) => {
   ],
   "purchaseLinks": {
     "online": [
-      {"platform": "蝦皮購物", "searchTerm": "具體搜尋關鍵字"},
-      {"platform": "PChome 24h", "searchTerm": "具體搜尋關鍵字"},
-      {"platform": "momo購物網", "searchTerm": "具體搜尋關鍵字"},
-      {"platform": "露天拍賣", "searchTerm": "具體搜尋關鍵字"},
-      {"platform": "Yahoo拍賣", "searchTerm": "具體搜尋關鍵字"}
+${shoppingPlatforms.map(p => `      {"platform": "${p.platform}", "searchTerm": "具體搜尋關鍵字"}`).join(',\n')}
     ],
     "offline": [
       "實體店面或地點1",
